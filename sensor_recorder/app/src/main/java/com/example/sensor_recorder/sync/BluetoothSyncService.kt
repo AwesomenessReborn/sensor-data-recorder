@@ -301,6 +301,7 @@ class BluetoothSyncService : Service() {
 
         peer.clockOffsetResult = result
         Timber.i("Clock sync done for ${peer.device.name}: offset=${result.offsetNs / 1_000_000}ms")
+        sendLineToPeer(peer, SyncMessage.SyncDone.toJson())
 
         // Push offset into SensorRecorderService
         val name = peer.device.name ?: peer.device.address
@@ -439,6 +440,10 @@ class BluetoothSyncService : Service() {
                     currentSessionId = null
                     peers.forEach { it.lastStatusReport = null }
                 }
+            }
+            is SyncMessage.SyncDone -> {
+                Timber.i("Worker: clock sync complete, transitioning to READY")
+                updateConnectionState(BtConnectionState.READY)
             }
             is SyncMessage.Ack -> Timber.d("Ack from ${peer.device.name} for ${msg.cmd}")
             else -> Timber.w("Unhandled message: $msg")

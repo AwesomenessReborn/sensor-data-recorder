@@ -53,6 +53,10 @@ sealed class SyncMessage {
         }.toString()
     }
 
+    object SyncDone : SyncMessage() {
+        override fun toJson(): String = JSONObject().apply { put("type", "SYNC_DONE") }.toString()
+    }
+
     companion object {
         /**
          * Parses a JSON string into a SyncMessage object.
@@ -82,6 +86,7 @@ sealed class SyncMessage {
                         json.getLong("accel_count"),
                         json.getLong("gyro_count")
                     )
+                    "SYNC_DONE" -> SyncDone
                     else -> null
                 }
             } catch (e: Exception) {
