@@ -21,6 +21,8 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -814,11 +816,16 @@ fun RecordingScreen(
     onAddDevice: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // ── Scrollable content ───────────────────────────────────────────────
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
         Text("IMU Recorder", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
 
         // Role selector (hidden while recording)
@@ -881,7 +888,14 @@ fun RecordingScreen(
             SyncReportCard(report = syncReport)
         }
 
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(8.dp))
+        } // end scrollable column
+
+        // ── Pinned bottom section ────────────────────────────────────────────
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
 
         // START DELAY SELECTOR
         if (!isRecording && !isCountingDown && deviceRole != DeviceRole.WORKER) {
@@ -970,7 +984,8 @@ fun RecordingScreen(
                 Text(if (isExporting) "EXPORTING..." else "SHARE RECORDING", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
-    }
+        } // end pinned column
+    } // end outer column
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1001,16 +1016,27 @@ fun BluetoothStatusCard(
         BtConnectionState.IDLE -> if (role == DeviceRole.WORKER) "● Listening..." else "○ Not connected"
         BtConnectionState.CONNECTING -> "⟳ Connecting..."
         BtConnectionState.SYNCING -> "⟳ Syncing clocks..."
-        BtConnectionState.READY -> "● Ready — ${peerDeviceName ?: "peer"}"
-        BtConnectionState.RECORDING -> "● Recording with ${peerDeviceName ?: "peer"}"
+        BtConnectionState.READY -> "● Ready"
+        BtConnectionState.RECORDING -> "● Recording"
         BtConnectionState.ERROR -> "✕ Error"
     }
+    val peerNames = peerDeviceName
+        ?.split(", ")
+        ?.filter { it.isNotBlank() }
+        ?: emptyList()
+    val showPeerList = state in listOf(BtConnectionState.READY, BtConnectionState.RECORDING, BtConnectionState.SYNCING) && peerNames.isNotEmpty()
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text("Bluetooth Sync", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
             Text(statusText, style = MaterialTheme.typography.bodyLarge)
+            if (showPeerList) {
+                Spacer(Modifier.height(4.dp))
+                peerNames.forEach { name ->
+                    Text("  • $name", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
             if (role == DeviceRole.CONTROLLER) {
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

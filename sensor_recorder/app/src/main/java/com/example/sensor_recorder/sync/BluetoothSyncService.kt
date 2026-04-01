@@ -382,7 +382,12 @@ class BluetoothSyncService : Service() {
             try {
                 while (peer.socket.isConnected) {
                     val line = peer.reader.readLine() ?: break
-                    val msg = SyncMessage.fromJson(line) ?: continue
+                    Timber.v("Reader [${peer.device.name}] raw: $line")
+                    val msg = SyncMessage.fromJson(line)
+                    if (msg == null) {
+                        Timber.w("Reader [${peer.device.name}] unknown/unparseable message: $line")
+                        continue
+                    }
                     handleMessage(msg, peer)
                 }
             } catch (e: IOException) {
@@ -395,6 +400,7 @@ class BluetoothSyncService : Service() {
     private fun handleMessage(msg: SyncMessage, peer: PeerConnection) {
         when (msg) {
             is SyncMessage.Ping -> {
+                Timber.d("Worker: PING from ${peer.device.name}")
                 val tRecv = SystemClock.elapsedRealtimeNanos()
                 val tReply = SystemClock.elapsedRealtimeNanos()
                 sendLineToPeer(peer, SyncMessage.Pong(msg.tNs, tRecv, tReply).toJson())
