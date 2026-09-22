@@ -1,0 +1,45 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: assembleDebug
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sensor_recorder
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Launcher JVM only. The Gradle daemon itself runs on the JetBrains 21
+      # toolchain pinned in sensor_recorder/gradle/gradle-daemon-jvm.properties,
+      # which Gradle provisions via the foojay resolver in settings.gradle.kts.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: chmod +x gradlew
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: sensor_recorder/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
